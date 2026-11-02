@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "strict": true,
+    "lib": ["ES2022"],
+    "skipDefaultLibCheck": true
+  },
+  "exclude": ["origin", "build"],
+  "references": [{ "path": "./tools/tsconfig.json" }]
+}

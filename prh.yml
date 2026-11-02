@@ -1,0 +1,27 @@
+# Terminology rules for the Bangla translation.
+# prh (proofreading helper) enforces consistent spellings via textlint.
+# Add a rule whenever GLOSSARY.md decides a term, so CI keeps everyone consistent.
+version: 1
+
+rules:
+  # Keep framework and language names in Latin script.
+  - expected: Angular
+    pattern: /অ্যাঙ্গুলার|এঙ্গুলার|এংগুলার/
+    prh: Write "Angular" in Latin script; do not transliterate the framework name.
+
+  - expected: TypeScript
+    pattern: /টাইপস্ক্রিপ্ট/
+    prh: Write "TypeScript" in Latin script.
+
+  - expected: JavaScript
+    pattern: /জাভাস্ক্রিপ্ট/
+    prh: Write "JavaScript" in Latin script.
+
+  # Consistent transliterations (GLOSSARY.md is the source of truth).
+  - expected: কম্পোনেন্ট
+    pattern: /কম্পোনেণ্ট|কমপোনেন্ট|কম্পনেন্ট/
+    prh: Use the glossary spelling কম্পোনেন্ট for "component".
+
+  - expected: টেমপ্লেট
+    pattern: /টেমপ্লেইট|টেম্পলেট/
+    prh: Use the glossary spelling টেমপ্লেট for "template".

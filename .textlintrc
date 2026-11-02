@@ -1,0 +1,19 @@
+{
+  "filters": {
+    "comments": true,
+    "allowlist": {
+      "allow": [
+        "/<docs-code[\\s\\S]*?</docs-code>/m",
+        "/\\{#.*\\}/m",
+        "/^[^\\p{Script=Bengali}\\n]+$/mu"
+      ]
+    }
+  },
+  "rules": {
+    "prh": {
+      "rulePaths": [
+        "./prh.yml"
+      ]
+    }
+  }
+}

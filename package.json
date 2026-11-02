@@ -1,0 +1,43 @@
+{
+  "name": "angular-bn",
+  "version": "0.0.1",
+  "type": "module",
+  "repository": "https://github.com/MeAkib/angular-bn",
+  "author": "Shuaib Hasan Akib <akibh805@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "tsx tools/watch.ts",
+    "build": "tsx tools/build.ts",
+    "lint": "tsx tools/lint.ts",
+    "test": "pnpm run test:patch",
+    "test:patch": "git apply -v --check --directory origin ./tools/adev-patches/*.patch",
+    "test:routes": "tsx tools/verify-content-routes.ts",
+    "test:unit": "tsx --test tools/lib/*.test.ts .github/scripts/*.test.mjs",
+    "update-origin": "tsx tools/update-origin.ts",
+    "list-untranslated": "tsx tools/list-untranslated.ts",
+    "translate": "tsx --env-file=.env tools/translator/main.ts"
+  },
+  "packageManager": "pnpm@10.34.1",
+  "devDependencies": {
+    "@langchain/core": "0.3.58",
+    "@langchain/google-genai": "0.2.12",
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "20.14.10",
+    "chokidar": "3.6.0",
+    "cli-progress": "^3.12.0",
+    "consola": "3.2.3",
+    "execa": "^9.3.0",
+    "globby": "14.0.2",
+    "langchain": "0.3.28",
+    "p-limit": "^7.2.0",
+    "prh": "5.4.4",
+    "rxjs": "7.8.1",
+    "sitemap": "8.0.0",
+    "textlint": "^14.0.4",
+    "textlint-filter-rule-allowlist": "4.0.0",
+    "textlint-filter-rule-comments": "^1.2.2",
+    "textlint-rule-prh": "^6.0.0",
+    "tsx": "4.19.2"
+  }
+}

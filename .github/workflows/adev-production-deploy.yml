@@ -1,0 +1,55 @@
+name: Build adev and deploy to production
+
+# Requires the FIREBASE_SERVICE_ACCOUNT secret (Firebase Hosting service account
+# JSON for the angular-bn project). Until it is set, run this manually after
+# creating the Firebase project.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  BAZEL_REPO_CACHE_PATH: '~/.cache/bazel_repo_cache'
+
+permissions: read-all
+
+jobs:
+  adev-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: true
+      - name: setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.node-version'
+          cache: pnpm
+      - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+          bazelrc: |
+            startup --host_jvm_args=-Xmx2g
+            build --discard_analysis_cache
+            build --nokeep_state_after_build
+            build --notrack_incremental_state
+            build --worker_max_instances=1
+            # Allow network access in sandbox for Algolia API calls during SSR prerendering.
+            build --sandbox_default_allow_network
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@0cbcac4740c2bfb00d632f0b863b57713124eb5a # v0.9.0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
+          projectId: angular-bn
+          channelId: live

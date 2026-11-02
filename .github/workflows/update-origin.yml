@@ -1,0 +1,86 @@
+name: Update origin from upstream
+
+# Weekly: bump the origin submodule to the latest angular/angular main, refresh
+# the English copies in adev-bn, verify the patches still apply, and open a PR.
+# Stale translations then show up as diffs against their .en.* snapshots.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      origin_sha:
+        description: 'angular/angular commit to pin (default: latest main)'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-origin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: true
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: '.node-version'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Resolve target commit
+        id: target
+        run: |
+          git -C origin fetch origin main
+          SHA="${{ github.event.inputs.origin_sha }}"
+          if [ -z "$SHA" ]; then
+            SHA=$(git -C origin rev-parse FETCH_HEAD)
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if [ "$(git -C origin rev-parse HEAD)" = "$SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update origin and refresh English copies
+        if: steps.target.outputs.changed == 'true'
+        run: pnpm run update-origin ${{ steps.target.outputs.sha }}
+
+      - name: Verify patches and routes
+        if: steps.target.outputs.changed == 'true'
+        run: |
+          pnpm run test:patch
+          pnpm run test:routes
+
+      - name: Open pull request
+        if: steps.target.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA=${{ steps.target.outputs.sha }}
+          SHORT=${SHA:0:10}
+          BRANCH="update-origin/$SHORT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "build: update origin to angular@$SHORT"
+          git push -u origin "$BRANCH" --force
+          gh pr create \
+            --title "build: update origin to angular@$SHORT" \
+            --body "Automated weekly origin bump to angular/angular@$SHA.
+
+Review the diffs under \`adev-bn/\`: changes to \`.en.*\` snapshots mean the corresponding translations are now stale." \
+            --base main --head "$BRANCH" || echo "PR already exists."

@@ -1,0 +1,49 @@
+diff --git a/adev/src/app/core/services/version-manager.service.ts b/adev/src/app/core/services/version-manager.service.ts
+index a05aec8058..83ff5c323b 100644
+--- a/adev/src/app/core/services/version-manager.service.ts
++++ b/adev/src/app/core/services/version-manager.service.ts
+@@ -10,7 +10,6 @@ import {httpResource} from '@angular/common/http';
+ import {DOCUMENT, Service, VERSION, computed, inject} from '@angular/core';
+ 
+ import versionJson from '../../../assets/others/versions.json';
+-import {ANGULAR_DEV} from '../constants/links';
+ 
+ type VersionMode = 'stable' | 'deprecated' | 'rc' | 'next' | number;
+ 
+@@ -52,7 +51,7 @@ export class VersionManager {
+   // which is the most up-to-date anyway.
+   remoteVersions = httpResource(
+     () => ({
+-      url: `${ANGULAR_DEV}/assets/others/versions.json`,
++      url: 'https://angular.bd/assets/others/versions.json',
+       transferCache: false,
+       cache: 'no-cache',
+     }),
+@@ -84,8 +83,12 @@ export class VersionManager {
+   );
+ 
+   readonly currentDocsVersion = computed(() => {
+-    // In devmode the version is 0, so we'll target next (which is first on the list)
+-    if (VERSION.major === '0' || VERSION.patch.includes('next')) {
++    // For angular.bd, always target the stable version (v22)
++    if (VERSION.major === '0') {
++      return this.versions().find((v) => v.displayName === 'v22') ?? this.versions()[0];
++    }
++
++    if (VERSION.patch.includes('next')) {
+       return this.versions()[0];
+     }
+ 
+diff --git a/adev/src/assets/others/versions.json b/adev/src/assets/others/versions.json
+index 580374a09f..bee60499fb 100644
+--- a/adev/src/assets/others/versions.json
++++ b/adev/src/assets/others/versions.json
+@@ -5,7 +5,7 @@
+   },
+   {
+     "version": "v22",
+-    "url": "https://v22.angular.dev/overview"
++    "url": "https://angular.bd/overview"
+   },
+   {
+     "version": "v21",
