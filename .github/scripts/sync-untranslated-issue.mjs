@@ -48,6 +48,13 @@
 const ISSUE_TITLE = 'Tracking: Untranslated documents';
 const LABELS = ['type: translation', 'help wanted'];
 
+// GitHub rejects issue bodies over 65536 characters (422: "body is too long").
+// Leave headroom for the headers and the orphaned-files note.
+const MAX_BODY_LENGTH = 63000;
+
+const NEW_CHECKOUT_ISSUE_URL =
+  'https://github.com/MeAkib/angular-bn/issues/new?template=translation-checkout.md';
+
 /** @type {Record<string, string>} */
 const CATEGORY_EMOJIS = {
   introduction: '🚀 Introduction',
@@ -129,8 +136,14 @@ function generateLinks(file) {
  * @param {number|null} checkoutIssueNumber - Translation Checkout issue number if exists
  * @returns {string} Markdown formatted list item
  */
-function formatFileEntry(filepath, links, checkoutIssueNumber = null) {
+function formatFileEntry(filepath, links, checkoutIssueNumber = null, compact = false) {
   const displayName = filepath.replace('src/content/', '');
+
+  if (compact) {
+    return checkoutIssueNumber
+      ? `- [x] ${displayName} (#${checkoutIssueNumber})`
+      : `- [ ] ${displayName}`;
+  }
 
   let linksText = `[GitHub](${links.githubUrl})`;
   if (links.previewUrl) {
@@ -180,7 +193,7 @@ function formatOrphanedNote(orphaned) {
  * @param {Map<string, number>} checkoutIssuesMap - Map of file paths to issue numbers
  * @returns {string} Markdown formatted issue body
  */
-function generateIssueBody(filesData, checkoutIssuesMap) {
+function generateIssueBody(filesData, checkoutIssuesMap, compact = false) {
   const { count, files } = filesData;
 
   if (count === 0) {
@@ -202,9 +215,13 @@ When new untranslated files appear upstream, this issue updates automatically.
 
   const groups = groupByCategory(files);
 
+  const claimInstruction = compact
+    ? `To claim a file, open a [Translation Checkout issue](${NEW_CHECKOUT_ISSUE_URL}) titled \`translate: {file path}\`.`
+    : 'To claim a file, open a Translation Checkout issue from its "📝 Claim" link.';
+
   let body = `## 📋 Untranslated documents
 
-This issue updates automatically. To claim a file, open a Translation Checkout issue from its "📝 Claim" link.
+This issue updates automatically. ${claimInstruction}
 
 **Last updated**: ${new Date().toISOString()}
 **Untranslated files**: ${count}
@@ -225,21 +242,40 @@ ${formatOrphanedNote(filesData.orphaned)}
     for (const file of categoryFiles) {
       const links = generateLinks(file);
       const checkoutIssueNumber = checkoutIssuesMap.get(file.path) || null;
-      body += formatFileEntry(file.path, links, checkoutIssueNumber) + '\n';
+      body += formatFileEntry(file.path, links, checkoutIssueNumber, compact) + '\n';
     }
 
     body += '\n';
   }
+
+  const claimStep = compact
+    ? `2. Open a [Translation Checkout issue](${NEW_CHECKOUT_ISSUE_URL}) titled \`translate: {file path}\``
+    : '2. Click its "📝 Claim" link to open a Translation Checkout issue';
 
   body += `---
 
 ## 📝 How to start translating
 
 1. Pick a file from the list above
-2. Click its "📝 Claim" link to open a Translation Checkout issue
+${claimStep}
 3. Follow the [contributing guide](https://github.com/MeAkib/angular-bn/blob/main/CONTRIBUTING.md)
 `;
 
+  return body;
+}
+
+/**
+ * Build the issue body, degrading until it fits GitHub's size limit:
+ * full links per file, then a compact list, then a hard truncation.
+ */
+export function buildIssueBody(filesData, checkoutIssuesMap) {
+  let body = generateIssueBody(filesData, checkoutIssuesMap);
+  if (body.length > MAX_BODY_LENGTH) {
+    body = generateIssueBody(filesData, checkoutIssuesMap, true);
+  }
+  if (body.length > MAX_BODY_LENGTH) {
+    body = body.slice(0, MAX_BODY_LENGTH) + '\n\n…list truncated; run `pnpm list-untranslated` for the rest.';
+  }
   return body;
 }
 
@@ -290,7 +326,8 @@ export default async ({github, context, core, filesData}) => {
 
   const trackingIssue = issues.find(issue => issue.title === ISSUE_TITLE);
 
-  const issueBody = generateIssueBody(filesData, checkoutIssuesMap);
+  const issueBody = buildIssueBody(filesData, checkoutIssuesMap);
+  core.info(`Issue body length: ${issueBody.length}`);
 
   if (trackingIssue) {
     core.info(`Found existing tracking issue #${trackingIssue.number}`);
